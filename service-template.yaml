@@ -22,7 +22,6 @@ spec:
           title: Owner
           type: string
           description: Team or group responsible for this service
-          ui:field: EntityPicker # Enables selecting a team from the catalog
 
   steps:
     - id: register
