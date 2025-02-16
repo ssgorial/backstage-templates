@@ -1,46 +1,86 @@
+# Notice the v1beta3 version
 apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
+# some metadata about the template itself
 metadata:
-  name: create-new-service
-  title: Create a New Service
-  description: Creates a new service and registers it in the Backstage catalog
+  name: v1beta3-demo
+  title: Test Action template
+  description: scaffolder v1beta3 template demo
 spec:
-  owner: team-infra
+  owner: backstage/techdocs-core
   type: service
 
+  # these are the steps which are rendered in the frontend with the form input
   parameters:
-    - title: Service Details
+    - title: Fill in some steps
       required:
-        - serviceName
-        - owner
+        - name
       properties:
-        serviceName:
-          title: Service Name
+        name:
+          title: Name
           type: string
-          description: The name of the new service
+          description: Unique name of the component
+          ui:autofocus: true
+          ui:options:
+            rows: 5
         owner:
           title: Owner
           type: string
-          description: Team or group responsible for this service
+          description: Owner of the component
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+    - title: Choose a location
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: Repository Location
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
 
+  # here's the steps that are executed in series in the scaffolder backend
   steps:
+    - id: fetch-base
+      name: Fetch Base
+      action: fetch:template
+      input:
+        url: ./template
+        values:
+          name: ${{ parameters.name }}
+          owner: ${{ parameters.owner }}
+
+    - id: fetch-docs
+      name: Fetch Docs
+      action: fetch:plain
+      input:
+        targetPath: ./community
+        url: https://github.com/backstage/community/tree/main/backstage-community-sessions
+
+    - id: publish
+      name: Publish
+      action: publish:github
+      input:
+        allowedHosts: ['github.com']
+        description: This is ${{ parameters.name }}
+        repoUrl: ${{ parameters.repoUrl }}
+
     - id: register
-      name: Register Service in Backstage
+      name: Register
       action: catalog:register
       input:
-        entity:
-          apiVersion: backstage.io/v1alpha1
-          kind: Component
-          metadata:
-            name: ${{ parameters.serviceName }}
-            description: A new service generated via Backstage
-          spec:
-            type: service
-            lifecycle: production
-            owner: ${{ parameters.owner }}
+        repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
 
+  # some outputs which are saved along with the job for use in the frontend
   output:
     links:
-      - title: View in Backstage
-        url: "/catalog/default/component/${{ parameters.serviceName }}"
-
+      - title: Repository
+        url: ${{ steps['publish'].output.remoteUrl }}
+      - title: Open in catalog
+        icon: catalog
+        entityRef: ${{ steps['register'].output.entityRef }}
