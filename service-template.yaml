@@ -1,0 +1,47 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: create-new-service
+  title: Create a New Service
+  description: Creates a new service and registers it in the Backstage catalog
+spec:
+  owner: team-infra
+  type: service
+
+  parameters:
+    - title: Service Details
+      required:
+        - serviceName
+        - owner
+      properties:
+        serviceName:
+          title: Service Name
+          type: string
+          description: The name of the new service
+        owner:
+          title: Owner
+          type: string
+          description: Team or group responsible for this service
+          ui:field: EntityPicker # Enables selecting a team from the catalog
+
+  steps:
+    - id: register
+      name: Register Service in Backstage
+      action: catalog:register
+      input:
+        entity:
+          apiVersion: backstage.io/v1alpha1
+          kind: Component
+          metadata:
+            name: ${{ parameters.serviceName }}
+            description: A new service generated via Backstage
+          spec:
+            type: service
+            lifecycle: production
+            owner: ${{ parameters.owner }}
+
+  output:
+    links:
+      - title: View in Backstage
+        url: "/catalog/default/component/${{ parameters.serviceName }}"
+
